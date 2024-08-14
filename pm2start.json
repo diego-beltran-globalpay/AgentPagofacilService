@@ -1,0 +1,14 @@
+{
+    "apps": [
+        {
+            "name": "AgentPagofacilService-20004",
+            "script": "./build/App.js",
+            "cwd": "./",
+            "exec_interpreter": "node",
+            "watch": false,
+            "out_file": "/dev/null",
+            "node_args": "",
+            "args": " --useConfigIni=true --configIniPath=./config/params/properties.ini"
+        }
+    ]
+}
