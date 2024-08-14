@@ -1,0 +1,64 @@
+"PFUserExtraCreation": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+
+            "@SetLog([PagoFacil] Iniciando insercion de user_extra,info)": "",
+
+            "+tmp.newUserExtra.idUsuario"                             : "%Ttmp.newUser.id",
+            "+tmp.newUserExtra.nombre"                                : "%Ttmp.ConsultaBDNRes.nombre",
+            "+tmp.newUserExtra.apellido"                              : "%Ttmp.ConsultaBDNRes.paterno",
+
+            "+Cond.hasName": {
+              "Match": [
+                {"%Ttmp.newUserExtra.nombre": "^(null|undefined|)$"}
+              ],
+              "Rule": [
+                {
+                  "+tmp.newUserExtra.nombre"                                : "%Ttmp.ConsultaBDNRes.rlNombre",
+                  "+tmp.newUserExtra.apellido"                              : "%Ttmp.ConsultaBDNRes.rlPaterno"
+                }
+              ]
+            },
+
+            "+Cond.isRecurringPayment": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.tpProdServ": "^17$"},
+                {"%Ttmp.ConsultaBDNRes.tpProdServ": "^(?!17$).*$"}
+              ],
+              "Rule": [
+                {
+                  "@SetLog([PagoFacil] Se agrega campo tiene_cargo_recurrente,info)"        : "",
+                  "+tmp.newUserExtra.tiene_cargo_recurrente"           : true
+                },
+                {
+                  "@SetLog([PagoFacil] No es Cargo recurrente,info)"        : ""
+                }
+              ]
+            },
+
+            "+tmp.newUserExtra.ciudad"                                : "%Ttmp.ConsultaBDNRes.fiscalCiudad",
+            "+tmp.newUserExtra.pais"                                  : "%Ttmp.ConsultaBDNRes.nacionalidadPm",
+            "+tmp.newUserExtra.rut"                                   : "%Ttmp.ConsultaBDNRes.rut",
+            "+tmp.newUserExtra.telefono"                              : "%Ttmp.ConsultaBDNRes.fiscalTelefono",
+            "+tmp.newUserExtra.created_at"                            : "%Ttmp.CurrentDate",
+            "+tmp.newUserExtra.updated_at"                            : "%Ttmp.CurrentDate",
+
+            "+tmp.newUserExtra.id"                                    : "@InsertRecord(connPF,user_extra,%Ttmp.newUserExtra)",
+            "@SetLog([PagoFacil] Creacion user_extra OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFUserExtraCreation,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },

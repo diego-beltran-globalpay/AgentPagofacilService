@@ -1,0 +1,503 @@
+{
+  "Version": "1.005.000",
+  "Transformation": {
+    "CompanyCreation": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+
+            "+Cond.HasBDNData": {
+              "Match": [
+                {"%TResponse.data.Entity-Data": "^(undefined)$"}
+              ],
+              "Rule": [
+                {
+                  "+CompanyCreation.error_code"               : "-1",
+                  "+CompanyCreation.error_message"            : "Sin datos de BDN",
+                  "@GoToError(0)"                             : ""
+                }
+              ]
+            },
+
+            "+tmp.CurrentTimestamp"                           : "@GetCurrentTimestamp()",
+            "+tmp.CurrentDate"                                : "@GetMysqlDate(1)",
+            "+tmp.ConsultaBDNRes"                             : "@Deserialize(%TResponse.data.Entity-Data)",
+
+            "@SetLog([PagoFacil] Recibidos datos de afiliacion,%Ttmp.ConsultaBDNRes.afiliacion,info)" : "",
+
+            "@GetRecord(connPF,user,%Ttmp.user,username,%Ttmp.ConsultaBDNRes.afiliacion)": "",
+
+            "+Cond.UserExist": {
+              "Match": [
+                {"%Ttmp.user.id": "^(null|undefined|)$"},
+                {"%Ttmp.user.id": "^(?!(null|undefined|)$).+$"}
+              ],
+              "Rule": [
+                {
+                  "@SetLog([PagoFacil] Afiliacion nueva - Se creará Registro,info)": ""
+                },
+                {
+                  "@SetLog([PagoFacil] Afiliacion ya existe - Se inicia actualizacion,info)": "",
+                  "@CallTo(CompanyUpdate,0)": "",
+                  "@GoToAutoReply(0)": ""
+                }
+              ]
+            },
+
+
+            "@SetLog([PagoFacil] Creando cuenta en AWS,info)" : "",
+            "+tmp.AccountCreationResponse.idCognito"          : "@CreateAccount(%Ttmp.ConsultaBDNRes.comercioEmail,%Ttmp.ConsultaBDNRes.rut)",
+
+            "+Cond.isValidUID": {
+              "Match": [
+                {"%Ttmp.AccountCreationResponse.idCognito"    : "^(undefined|false)$"}
+              ],
+              "Rule": [
+                {
+                  "+CompanyCreation.error_code"                : "-1",
+                  "+CompanyCreation.error_message"             : "Error al crear cuenta en Cognito",
+                  "@GoToError(0)"                              : ""
+                }
+              ]
+            },
+
+            "@SetLog([PagoFacil] Escribiendo tablas PagoFacil,info)"  : "",
+            "@CallTo(PFUserCreation,0)"                               : "",
+
+            "+Cond.UserCreated": {
+              "Match": [
+                {"%Ttmp.newUser.id": "^(undefined)$"}
+              ],
+              "Rule": [
+                {
+                  "+CompanyCreation.error_code"                   : "-1",
+                  "+CompanyCreation.error_message"                : "Error al crear Usuario en BD",
+                  "@SetLog([PagoFacil] Error al crear Usuario en BD,info)": "",
+                  "@GoToError(0)"                              : ""
+                }
+              ]
+            },
+
+            "@CallTo(PFUserExtraCreation,0)"              : "",
+            "@CallTo(PFUserDatosFacturacionCreation,0)"   : "",
+            "@CallTo(PFExtSBU,0)"                         : "",
+            "@CallTo(PFCreateService,0)"                  : "",
+            "@CallTo(PFUserBankAccounts,0)"               : "",
+            "@CallTo(PFContract,0)"                       : "",
+
+            "+Cond.TieneCuotas": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.cuotasComercio": "true"}
+              ],
+              "Rule": [
+                {
+                  "@CallTo(PFUserMerchantInstallments,0)"       : ""
+                }
+              ]
+            },
+
+            "@SetLog([PagoFacil] Insertando datos en Dynamo,info)": "",
+            "@CallTo(PFDynamoData,0)"                      : "",
+
+            "@SetLog([PagoFacil] Creacion terminada OK,info)": "",
+            "+CreationResponse.Message"                   : "OK",
+            "+CreationResponse.Resp"                      : "%Ttmp.AccountCreationResponse",
+            "-tmp.ConsultaBDNRes"                         :""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de Company,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFUserCreation": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.newUser.idCognito"                : "%Ttmp.AccountCreationResponse.idCognito",
+            "+tmp.newUser.idAuth0"                  : "%Ttmp.AccountCreationResponse.idCognito",
+            "+tmp.newUser.username"                 : "%Ttmp.ConsultaBDNRes.afiliacion",
+            "+tmp.newUser.email"                    : "%Ttmp.ConsultaBDNRes.comercioEmail",
+            "+tmp.newUser.status"                   : "10",
+            "+tmp.newUser.tipoUsuario"              : "miembro",
+            "+tmp.newUser.created_at"               : "%Ttmp.CurrentTimestamp",
+            "+tmp.newUser.updated_at"               : "%Ttmp.CurrentTimestamp",
+
+            "+tmp.newUser.id"                       : "@InsertRecord(connPF,user,%Ttmp.newUser)",
+            "@SetLog([PagoFacil] Creacion user OK,info)": ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFUserCreation,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFUserExtraCreation": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+
+            "@SetLog([PagoFacil] Iniciando insercion de user_extra,info)": "",
+            
+            "+tmp.newUserExtra.idUsuario"                             : "%Ttmp.newUser.id",
+            "+tmp.newUserExtra.nombre"                                : "%Ttmp.ConsultaBDNRes.nombre",
+            "+tmp.newUserExtra.apellido"                              : "%Ttmp.ConsultaBDNRes.paterno",
+
+            "+Cond.hasName": {
+              "Match": [
+                {"%Ttmp.newUserExtra.nombre": "^(null|undefined|)$"}
+              ],
+              "Rule": [
+                {
+                  "+tmp.newUserExtra.nombre"                                : "%Ttmp.ConsultaBDNRes.rlNombre",
+                  "+tmp.newUserExtra.apellido"                              : "%Ttmp.ConsultaBDNRes.rlPaterno"
+                }
+              ]
+            },
+
+            "+Cond.isRecurringPayment": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.tpProdServ": "^17$"},
+                {"%Ttmp.ConsultaBDNRes.tpProdServ": "^(?!17$).*$"}
+              ],
+              "Rule": [
+                {
+                  "@SetLog([PagoFacil] Se agrega campo tiene_cargo_recurrente,info)"        : "",
+                  "+tmp.newUserExtra.tiene_cargo_recurrente"           : true
+                },
+                {
+                  "@SetLog([PagoFacil] No es Cargo recurrente,info)"        : ""
+                }
+              ]
+            },
+
+            "+tmp.newUserExtra.ciudad"                                : "%Ttmp.ConsultaBDNRes.fiscalCiudad",
+            "+tmp.newUserExtra.pais"                                  : "%Ttmp.ConsultaBDNRes.nacionalidadPm",
+            "+tmp.newUserExtra.rut"                                   : "%Ttmp.ConsultaBDNRes.rut",
+            "+tmp.newUserExtra.telefono"                              : "%Ttmp.ConsultaBDNRes.fiscalTelefono",
+            "+tmp.newUserExtra.created_at"                            : "%Ttmp.CurrentDate",
+            "+tmp.newUserExtra.updated_at"                            : "%Ttmp.CurrentDate",
+
+            "+tmp.newUserExtra.id"                                    : "@InsertRecord(connPF,user_extra,%Ttmp.newUserExtra)",
+            "@SetLog([PagoFacil] Creacion user_extra OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFUserExtraCreation,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFUserDatosFacturacionCreation": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.newUserDF.idUsuario"                        : "%Ttmp.newUser.id",
+            "+tmp.newUserDF.isCompany"                        : "0",
+            "+tmp.newUserDF.ciudad"                           : "%Ttmp.ConsultaBDNRes.fiscalCiudad",
+            "+tmp.newUserDF.comuna"                           : "%Ttmp.ConsultaBDNRes.fiscalComuna",
+            "+tmp.newUserDF.direccion"                        : "%Ttmp.ConsultaBDNRes.fiscalCalle",
+            "+tmp.newUserDF.email_dte"                        : "%Ttmp.ConsultaBDNRes.fiscalEmail",
+            "+tmp.newUserDF.giro"                             : "%Ttmp.ConsultaBDNRes.giroSii",
+            "+tmp.newUserDF.nombreRepresentante"              : "@Concat(%Ttmp.ConsultaBDNRes.rlNombre, ,%Ttmp.ConsultaBDNRes.rlPaterno, ,%Ttmp.ConsultaBDNRes.rlMaterno)",
+            "+tmp.newUserDF.razonSocial"                      : "%Ttmp.ConsultaBDNRes.razonSocial",
+            "+tmp.newUserDF.rut"                              : "%Ttmp.ConsultaBDNRes.rut",
+            "+tmp.newUserDF.rutRepresentante"                 : "%Ttmp.ConsultaBDNRes.rlRut",
+            "+tmp.newUserDF.created_at"                       : "%Ttmp.CurrentDate",
+            "+tmp.newUserDF.updated_at"                       : "%Ttmp.CurrentDate",
+
+            "+tmp.newUserDF.id"                               : "@InsertRecord(connPF,user_datos_facturacion,%Ttmp.newUserDF)",
+            "@SetLog([PagoFacil] Creacion user_datos_facturacion OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFUserDatosFacturacionCreation,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFExtSBU": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.newExtSBU.idUser"                           : "%Ttmp.newUser.id",
+            "+tmp.newExtSBU.idExtService"                     : "16",
+            "+tmp.newExtSBU.key1"                             : "%Ttmp.ConsultaBDNRes.afiliacion",
+            "+tmp.newExtSBU.notes"                            : "BCI PAGOS",
+            "+tmp.newExtSBU.created_at"                       : "%Ttmp.CurrentDate",
+            "+tmp.newExtSBU.updated_at"                       : "%Ttmp.CurrentDate",
+
+            "+tmp.newExtSBU.id"                               : "@InsertRecord(connPF,ext_services_bridge_usuarios,%Ttmp.newExtSBU)",
+            "@SetLog([PagoFacil] Creacion ext_services_bridge_usuarios OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFext_services_bridge_usuarios,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFUserBankAccounts": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+
+            "@GetRecord(connPF,global_instituciones_financieras,%Ttmp.Institucion,codigoSBIF,%Ttmp.ConsultaBDNRes.claveBanco)": "",
+
+            "+tmp.newUserBnkAc.idUsuario"                        : "%Ttmp.newUser.id",
+            "+tmp.newUserBnkAc.idInstitucion"                    : "%Ttmp.Institucion.id",
+            "+tmp.newUserBnkAc.rutDestinatario"                  : "%Ttmp.ConsultaBDNRes.rutTitularCuenta",
+
+            "+Cond.hasRutDestinatario": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.rutTitularCuenta": "^(null|undefined|)$"}
+              ],
+              "Rule": [
+                {
+                  "+tmp.newUserBnkAc.rutDestinatario"            : "%Ttmp.ConsultaBDNRes.rut"
+                }
+              ]
+            },
+
+            "+tmp.newUserBnkAc.nombreDestinatario"               : "@Concat(%Ttmp.ConsultaBDNRes.rlNombre, ,%Ttmp.ConsultaBDNRes.rlPaterno, ,%Ttmp.ConsultaBDNRes.rlMaterno)",
+            "+tmp.newUserBnkAc.numeroCuenta"                     : "%Ttmp.ConsultaBDNRes.ctaNacAbono",
+            "+tmp.newUserBnkAc.emailDestinatario"                : "%Ttmp.ConsultaBDNRes.emailContacto",
+
+            "+Cond.hasEmailContacto": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.emailContacto": "^(null|undefined|)$"}
+              ],
+              "Rule": [
+                {
+                  "+tmp.newUserBnkAc.emailDestinatario"          : "%Ttmp.ConsultaBDNRes.comercioEmail"
+                }
+              ]
+            },
+
+            "+tmp.newUserBnkAc.created_at"                       : "%Ttmp.CurrentDate",
+            "+tmp.newUserBnkAc.updated_at"                       : "%Ttmp.CurrentDate",
+
+            "+tmp.newExtSBU.id"                                  : "@InsertRecord(connPF,user_bank_accounts,%Ttmp.newUserBnkAc)",
+            "@SetLog([PagoFacil] Creacion user_bank_accounts OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PF user_bank_accounts,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFCreateService": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.CurrentDatetime"                             : "@GetMysqlDate(1)",
+            "+tmp.CurrentDate"                                 : "@GetMysqlDate(0)",
+
+            "+tmp.newService.owner"                            : "%Ttmp.newUser.id",
+            "+tmp.newService.tipo"                             : "SIN ECOMMERCE",
+            "+tmp.newService.nombreComercio"                   : "%Ttmp.ConsultaBDNRes.nombreFantasia",
+            "+tmp.newService.url_servicio"                     : "%Ttmp.ConsultaBDNRes.urlSitio",
+            "+Cond.TieneUrlServicio": {
+              "Match": [{ "%Ttmp.ConsultaBDNRes.urlSitio": "^(null|undefined|)$" }],
+              "Rule": [{"+tmp.newService.url_servicio": "https://www.pagofacil.cl/"}]
+            },
+            "+tmp.newService.token_service"                    : "@GenerateServiceToken()",
+            "+tmp.newService.token_secret"                     : "@GenerateServiceToken()",
+            "+tmp.newService.idPlan"                           : "24",
+            "+tmp.newService.callbackUrl"                      : "",
+            "+tmp.newService.returnUrl"                        : "",
+            "+tmp.newService.habilitado"                       : "1",
+            "+tmp.newService.valido_hasta"                     : "%Ttmp.CurrentDate",
+            "+tmp.newService.created_at"                       : "%Ttmp.CurrentDatetime",
+            "+tmp.newService.updated_at"                       : "%Ttmp.CurrentDatetime",
+            "+tmp.newService.id"                               : "@InsertRecord(connPF,servicios_tbk,%Ttmp.newService)",
+            "@SetLog([PagoFacil] Creacion servicios_tbk OK,info)"        : "",
+
+
+            "+tmp.newServiceSettings.idServicio"               : "%Ttmp.newService.id",
+            "+tmp.newServiceSettings.settings_key"             : "formType",
+            "+tmp.newServiceSettings.settings_value"           : "POST",
+            "+tmp.newServiceSettings.created_at"               : "%Ttmp.CurrentDatetime",
+            "+tmp.newServiceSettings.updated_at"               : "%Ttmp.CurrentDatetime",
+            "+tmp.newServiceSettings.id"                       : "@InsertRecord(connPF,servicios_settings,%Ttmp.newServiceSettings)",
+            "@SetLog([PagoFacil] Creacion servicios_settings OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFCreateService,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFUserMerchantInstallments": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+Cond.ValidQuotes": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.plazosCuotasComercio": "^[2-9]$|^[1-9][0-9]$"}
+              ],
+              "Rule": [
+                {
+                  "+tmp.CurrentDatetime"                        : "@GetMysqlDate(1)",
+
+                  "+tmp.newMI.affiliation"                      : "%Ttmp.ConsultaBDNRes.afiliacion",
+                  "+tmp.newMI.start_quote"                      : 2,
+                  "+tmp.newMI.end_quote"                        : "%Ttmp.ConsultaBDNRes.plazosCuotasComercio",
+                  "+tmp.newMI.created_at"                       : "%Ttmp.CurrentDatetime",
+                  "+tmp.newMI.updated_at"                       : "%Ttmp.CurrentDatetime",
+                  "+tmp.newMI.id"                               : "@InsertRecord(connPF,user_merchant_installments,%Ttmp.newMI)",
+                  "@SetLog([PagoFacil] Creacion user_merchant_installments OK,info)"        : ""
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFUserMerchantInstallments,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFDynamoData": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.dynamoData"                                  : "@InsertEVOGW(%Ttmp.ConsultaBDNRes.afiliacion,%Ttmp.ConsultaBDNRes.idGiro,%Ttmp.ConsultaBDNRes.urlSitio,%Ttmp.ConsultaBDNRes.nombreFantasia,%Ttmp.newService.id)",
+            "+Cond.isValidUID": {
+              "Match": [
+                {
+                  "%Ttmp.dynamoData"    : "^0$"
+                }
+              ],
+              "Rule": [
+                {
+                  "+CompanyCreation.error_code"                : "-1",
+                  "+CompanyCreation.error_message"             : "Error al crear datos de Dyanmo",
+                  "@GoToError(0)"                              : ""
+                }
+              ]
+            },
+            "@SetLog([PagoFacil] Creacion PFDynamoData OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFDynamoData,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    },
+    "PFContract": {
+      "Task": {
+        "Match": [],
+        "Rule": [
+          {
+            "+tmp.ContractResponse"                                     : "@InsertContractUser(connPF,%Ttmp.newUser.id,%Ttmp.newUserDF,%Ttmp.newUserExtra)",
+            "+Cond.isValidUID": {
+              "Match": [
+                {
+                  "%Ttmp.ContractResponse"    : "^0$"
+                }
+              ],
+              "Rule": [
+                {
+                  "+CompanyCreation.error_code"                : "-1",
+                  "+CompanyCreation.error_message"             : "Error al crear Contract para usuario",
+                  "@GoToError(0)"                              : ""
+                }
+              ]
+            },
+
+            "@SetLog([PagoFacil] Creacion PFDynamoData OK,info)"        : ""
+          }
+        ]
+      },
+      "Error": {
+        "Match": [],
+        "Rule": [
+          {
+            "@SetLog([PagoFacil] Error en creacion de PFContract,info)": "",
+            "+ResultCode":"500",
+            "+ResultMessage":"Error",
+            "+MessageType":"Answer"
+          }
+        ]
+      }
+    }
+  }
+}

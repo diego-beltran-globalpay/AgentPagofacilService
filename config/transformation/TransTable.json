@@ -1,0 +1,13 @@
+{
+    "Tables": {
+        "AgentConfig": {
+            "InterfaceName": "PagoFacilQA"
+        },
+        "forwardService" : {
+            "dns" : "MP5G-ALB-1719699916.us-east-1.elb.amazonaws.com",
+            "timeout" : "20",
+            "path" : "/pendings",
+            "port": "443"
+        }
+    }
+}

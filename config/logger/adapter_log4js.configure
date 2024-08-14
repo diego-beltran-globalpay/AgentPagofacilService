@@ -1,0 +1,45 @@
+{
+    "appenders": 
+    { 
+        "console":{
+            "type": "console"
+        },
+        "file1": 
+        { 
+            "type": "file", 
+            "filename": "./logs/Adapter.log",
+            "pattern": "yyyy-MM-dd",
+            "maxLogSize": 30000000,
+            "compress": true,
+            "numBackups": 5,
+            "category":   "Adapter"
+        },
+        "Agent": {
+                  "type": "dateFile",
+                  "filename": "./logs/Agentlog.log",
+                  "pattern": "yyyy-MM-dd",
+                  "compress": true,
+                  "numBackups": 30
+                }
+    },
+    "categories":
+    {
+      "default":
+      {
+        "appenders":
+            [
+                "file1"
+            ],
+        "level": "TRACE"
+      },
+      "Agent":
+            {
+              "appenders":
+                  [
+                      "console",
+                      "Agent"
+                  ],
+              "level": "TRACE"
+            }
+    }
+}

@@ -1,0 +1,188 @@
+{
+    "Version": "1.001.000",
+    "Transformation": {
+        "Estimulo": {
+            "Task": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "+Interface": "@Get(AgentConfig,InterfaceName,0,tables1)",
+                        "@CallTo(RequestPendingByInterfaceAndStatus,0)": "",
+                        "+Cond.hasPendings": {
+                            "Match": [
+                                {
+                                    "%TPendingRecord": "^((?!undefined).)*$"
+                                },
+                                {
+                                    "%SAlwaysTRUE": "^(undefined)$"
+                                }
+                            ],
+                            "Rule": [
+                                {},
+                                {
+                                    "@FinishRule(0)": ""
+                                }
+                            ]
+                        },
+                        "-Interface": "",
+                        "-rows": "",
+                        "-Cond": "",
+                        "-tempField": ""
+                    }
+                ]
+            },
+            "Error": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@Source2Target": "",
+                        "+ResultCode": "500",
+                        "+ResultMessage": "Error",
+                        "+MessageType": "Answer"
+                    }
+                ]
+            }
+        },
+        "RequestPendingByInterfaceAndStatus": {
+            "Task": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@SetLogAK(< New Request ------------------------------------------------------------->,info)": "",
+                        "@CallTo(ReadLastSequenceFromContext,0)": "",
+                        "-http-comment0": "Request params",
+                        "+tmpFld.dns": "@Get(forwardService,dns,false,tables1)",
+                        "+tmpFld.timeout": "@Get(forwardService,timeout,false,tables1)",
+                        "+tmpFld.path": "@Get(forwardService,path,false,tables1)",
+                        "+tmpFld.port": "@Get(forwardService,port,false,tables1)",
+                        "-http-comment1": "Headers to be added to the request",
+                        "+request._http.headers.Content-Type": "application/json",
+                        "+request._http.headers.accept": "application/json",
+                        "+request._http.headers.Authorization": "@Get(forwardService,authToken,false,tables1)",
+                        "-http-comment2": "Data to be send in the request (body)",
+                        "+request.Interface": "%TInterface",
+                        "+request.Sequence": "%TLastSequence",
+                        "@SendByHttp(%Trequest,%TResponse,%TtmpFld.dns,%TtmpFld.port,%TtmpFld.path,%TtmpFld.timeout,1,post)": "",
+                        "+Cond.HttpResult": {
+                            "Match": [
+                                {
+                                    "%TResponse.status": "^(200)$"
+                                },
+                                {
+                                    "%TResponse.status": "^((?!200).)*$"
+                                }
+                            ],
+                            "Rule": [
+                                {
+                                    "+hasPending": "true",
+
+                                    "+%SSequence": "%TResponse.data.Sequence",
+                                    "+%SEntity_name": "%TResponse.data.Entity_name",
+                                    "+%SEntity_key": "%TResponse.data.Entity_key",
+
+                                    "+context.message": "@Concat(Forward Service answer with a pending record Secuence=,%SSequence, Entity Name=,%SEntity_name, and Key=,%SEntity_key)",
+                                    "@SetLogAK(%Tcontext.message,info)": "",
+                                    "@CallTo(SaveLastSequenceToContext,0)": "",
+                                    "@CallTo(ProcessPendingOperation,0)": "",
+                                    "-context": ""
+                                },
+                                {
+                                    "@SetLogAK(No pendings to process,info)": "",
+                                    "+hasPending": "false"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Error": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@Source2Target": "",
+                        "+ResultCode": "500",
+                        "+ResultMessage": "Error",
+                        "+MessageType": "Answer"
+                    }
+                ]
+            }
+        },
+        "ProcessPendingOperation": {
+            "Task": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "-comment1": "AcÃ¡ debe ir la lÃ³gica para procesar la novedad",
+                        "@CallTo(CompanyCreation,0)": ""
+                    }
+                ]
+            },
+            "Error": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@Source2Target": "",
+                        "+ResultCode": "500",
+                        "+ResultMessage": "Error",
+                        "+MessageType": "Answer"
+                    }
+                ]
+            }
+        },
+        "ReadLastSequenceFromContext": {
+            "Task": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "+%SsourceKey_iToken": "lastSequenceKey",
+                        "@ReadContextV2(Default,%TLastSequence,transparent,sourceKey_iToken)": "",
+                        "+Cond.lastSequenceNotFound": {
+                            "Match": [{ "%TLastSequence": "^(undefined)$" }],
+                            "Rule": [
+                                {
+                                    "@SetLogAK(LastSequence could not be found, setting to default value [00],info)": "",
+                                    "+LastSequence": "00"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Error": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@Source2Target": "",
+                        "+ResultCode": "500",
+                        "+ResultMessage": "Error",
+                        "+MessageType": "Answer"
+                    }
+                ]
+            }
+        },
+        "SaveLastSequenceToContext": {
+            "Task": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "+context.message": "@Concat(Saving LastSequence with value=,%SSequence)",
+                        "@SetLogAK(%Tcontext.message,info)": "",
+                        "+%SsourceKey_iToken": "lastSequenceKey",
+                        "@SaveContextV2(Default,%SSequence,transparent,sourceKey_iToken)": ""
+                    }
+                ]
+            },
+            "Error": {
+                "Match": [],
+                "Rule": [
+                    {
+                        "@Source2Target": "",
+                        "+ResultCode": "500",
+                        "+ResultMessage": "Error",
+                        "+MessageType": "Answer"
+                    }
+                ]
+            }
+        }
+    }
+}
