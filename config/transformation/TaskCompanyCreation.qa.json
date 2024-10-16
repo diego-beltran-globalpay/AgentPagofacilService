@@ -35,8 +35,6 @@
               ],
               "Rule": [
                 {
-                  "+CompanyUpdate.error_code"                   : "-1",
-                  "+CompanyUpdate.error_message"                : "Error, usuario no existe",
                   "@SetLog([PagoFacil] Afiliacion nueva - Se creará Registro,info)": ""
                 },
                 {

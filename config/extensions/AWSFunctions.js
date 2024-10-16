@@ -7,15 +7,15 @@ const {
     CognitoIdentityProviderClient,
     SignUpCommand,
     AdminUpdateUserAttributesCommand,
-    AdminConfirmSignUpCommand
+    AdminConfirmSignUpCommand, AdminDeleteUserCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
 const {AgentLogger} = require("./ExtensionFunctions");
 
-const enviroment = 'CRAFT' // 'CRAFT', 'DEV' o 'PROD';
+const environment = 'DEV' // 'CRAFT', 'DEV' o 'PROD';
 
 let AWSConfig, Contracts_Table, ContractUser_Table, EvoGW_Table, S3_Bucket;
 
-if(enviroment === 'CRAFT'){
+if(environment === 'CRAFT'){
     AWSConfig = {
         accessKeyId: process.env.OB_ACCESSKEY,
         secretAccessKey: process.env.OB_SECRETKEY,
@@ -28,19 +28,19 @@ if(enviroment === 'CRAFT'){
     EvoGW_Table = "evo_gw_merchant_id-craft";
     S3_Bucket = 'craft-archivos.dashboard.pagofacil.org-pf' || process.env.S3_BUCKET;
 
-} else if (enviroment === 'DEV'){
+} else if (environment === 'DEV'){
     AWSConfig = {
         accessKeyId: process.env.OB_ACCESSKEY,
         secretAccessKey: process.env.OB_SECRETKEY,
         region: 'us-west-2',
-        userPoolClient: '6miu193ul8g950sst64249v4im',
-        userPoolId: 'us-west-2_J8c7BHK1F',
+        userPoolClient: '1m95fl45msc61j0njsldmk8b7c',
+        userPoolId: 'us-west-2_kNazeBAuD',
     }
     Contracts_Table = 'contracts_contracts';
     ContractUser_Table = "contracts_users";
     EvoGW_Table = "evo_gw_merchant_id-dev";
-    S3_Bucket = 'archivos.dashboard.pagofacil.org' || process.env.S3_BUCKET;
-} else if (enviroment === 'PROD'){
+    S3_Bucket = 'dev-archivos.dashboard.pagofacil.org' || process.env.S3_BUCKET;
+} else if (environment === 'PROD'){
     AWSConfig = {
         accessKeyId: process.env.OB_ACCESSKEY,
         secretAccessKey: process.env.OB_SECRETKEY,
@@ -63,12 +63,21 @@ const S3 = new AWS.S3({apiVersion: '2006-03-01'});
 class BaseClass {
 
     aLogger = new AgentLogger();
+    clientCognito;
 
     constructor(props) {
         this.props = props.reduce((newProps, prop, index) => {
             newProps[`param${index + 1}`] = prop
             return newProps
         }, {});
+
+        this.aLogger.trace('Generando conexion con Cognito');
+        this.aLogger.trace(`region: ${AWSConfig.region}`);
+        this.aLogger.trace(`userPoolId: ${AWSConfig.userPoolId}`);
+        this.aLogger.trace(`userPoolClient: ${AWSConfig.userPoolClient}`);
+        this.clientCognito = new CognitoIdentityProviderClient({
+            region: AWSConfig.region
+        });
     }
 
     getdatetime() {
@@ -79,35 +88,28 @@ class BaseClass {
 
 class CreateAccount extends BaseClass {
 
-    clientCognito;
-
     constructor(props) {
         super(props);
-        this.aLogger.trace('Generando conexion con Cognito');
-        this.aLogger.trace(`region: ${AWSConfig.region}`);
-        this.aLogger.trace(`userPoolId: ${AWSConfig.userPoolId}`);
-        this.aLogger.trace(`userPoolClient: ${AWSConfig.userPoolClient}`);
-        this.clientCognito = new CognitoIdentityProviderClient({
-            region: AWSConfig.region
-        });
     }
 
     async apply(contexts) {
 
-        const {param1: username, param2: rut} = this.props
+        const {param1: email, param2: rut, param3: username} = this.props
         const {registry: {logPrefix}} = contexts
 
         let requestUsername = (await this.accessor.get(username, contexts)).trim();
+        let requestEmail = (await this.accessor.get(email, contexts)).trim();
         let requestRut = await this.accessor.get(rut, contexts);
-        let builtPassword = buildPwd(requestUsername, requestRut);
+        let builtPassword = buildPwd(requestEmail, requestRut, requestUsername);
 
         this.aLogger.trace(`requestUsername "${requestUsername}" `);
+        this.aLogger.trace(`requestEmail "${requestEmail}" `);
         this.aLogger.trace(`requestRut "${requestRut}" `);
         this.aLogger.trace(`finalPassword "${builtPassword}" `);
 
         try {
             //Se crea cuenta en AWS Cognito
-            const userSub = await this.create(requestUsername, builtPassword);
+            const userSub = await this.create(requestUsername, builtPassword, requestEmail);
             this.aLogger.trace(`UserSub: "${userSub}" `);
 
             //Se confirma cuenta y correo
@@ -121,7 +123,7 @@ class CreateAccount extends BaseClass {
         }
     }
 
-    async create(username, password) {
+    async create(username, password, email) {
 
         const clientPoolId = AWSConfig.userPoolClient;
 
@@ -129,7 +131,21 @@ class CreateAccount extends BaseClass {
         const input = {
             ClientId: clientPoolId,
             Username: username,
-            Password: password
+            Password: password,
+            UserAttributes: [
+                {
+                    Name: 'email',
+                    Value: email
+                },
+                {
+                    Name: 'name',
+                    Value: username
+                },
+                {
+                    Name: 'given_name',
+                    Value: username
+                }
+            ]
         };
 
         this.aLogger.trace(`Generando request para creacion de user: ${JSON.stringify(input)}`)
@@ -175,6 +191,41 @@ class CreateAccount extends BaseClass {
         }
 
         return 'Success';
+    }
+
+}
+
+class DeleteCognitoAccount extends BaseClass {
+
+    constructor(props) {
+        super(props);
+    }
+
+    async apply(contexts) {
+
+        const {param1: username} = this.props
+        const {registry: {logPrefix}} = contexts
+
+        let requestUsername = (await this.accessor.get(username, contexts)).trim();
+
+        this.aLogger.trace(`requestUsername "${requestUsername}" `);
+
+        try {
+
+            const deleteInput = {
+                UserPoolId: AWSConfig.userPoolId,
+                Username: requestUsername
+            };
+            this.aLogger.trace(`Generando request para eliminar el user: ${JSON.stringify(deleteInput)}`);
+
+            await this.clientCognito.send(new AdminDeleteUserCommand(deleteInput));
+
+            this.aLogger.trace(`Usuario ${requestUsername} eliminado exitosamente`);
+
+        } catch (e) {
+            this.aLogger.error(`Ocurrió un error al eliminar el usuario ${requestUsername}. ${e.message}`);
+            return undefined;
+        }
     }
 
 }
@@ -458,11 +509,11 @@ class Deserialize extends BaseClass {
     }
 }
 
-function buildPwd(username, rut) {
+function buildPwd(username, rut, afiliacion) {
     const usernameCap = username.split('@')[0].toLowerCase();
     const rutSinDigito = rut.split('-')[0];
 
-    let password = `${usernameCap}_${rutSinDigito}`;
+    let password = `${usernameCap}_${rutSinDigito}_${afiliacion}`;
     return password.charAt(0).toUpperCase() + password.slice(1).toLowerCase();
 
 }
@@ -477,6 +528,7 @@ function transformNumberToStringWithLeadingZeros(number) {
 }
 
 exports.CreateAccount = CreateAccount;
+exports.DeleteCognitoAccount = DeleteCognitoAccount;
 exports.GetCurrentTimestamp = GetCurrentTimestamp;
 exports.Deserialize = Deserialize;
 exports.InsertEVOGW = InsertEVOGW;

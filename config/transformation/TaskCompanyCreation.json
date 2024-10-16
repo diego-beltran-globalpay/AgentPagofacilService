@@ -47,7 +47,7 @@
 
 
             "@SetLog([PagoFacil] Creando cuenta en AWS,info)" : "",
-            "+tmp.AccountCreationResponse.idCognito"          : "@CreateAccount(%Ttmp.ConsultaBDNRes.comercioEmail,%Ttmp.ConsultaBDNRes.rut)",
+            "+tmp.AccountCreationResponse.idCognito"          : "@CreateAccount(%Ttmp.ConsultaBDNRes.comercioEmail,%Ttmp.ConsultaBDNRes.rut,%Ttmp.ConsultaBDNRes.afiliacion)",
 
             "+Cond.isValidUID": {
               "Match": [
@@ -72,8 +72,9 @@
               "Rule": [
                 {
                   "+CompanyCreation.error_code"                   : "-1",
-                  "+CompanyCreation.error_message"                : "Error al crear Usuario en BD",
+                  "+CompanyCreation.error_message"                : "Error al crear Usuario en BD - Se eliminará de Cognito",
                   "@SetLog([PagoFacil] Error al crear Usuario en BD,info)": "",
+                  "+tmp.AccountDeletion"                       : "@DeleteCognitoAccount(%Ttmp.ConsultaBDNRes.afiliacion)",
                   "@GoToError(0)"                              : ""
                 }
               ]
