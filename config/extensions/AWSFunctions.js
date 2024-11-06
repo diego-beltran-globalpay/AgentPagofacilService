@@ -94,26 +94,28 @@ class CreateAccount extends BaseClass {
 
     async apply(contexts) {
 
-        const {param1: email, param2: rut, param3: username} = this.props
+        const {param1: email, param2: rut, param3: afiliacion} = this.props
         const {registry: {logPrefix}} = contexts
 
-        let requestUsername = (await this.accessor.get(username, contexts)).trim();
+        let requestAfiliacion = (await this.accessor.get(afiliacion, contexts)).trim();
         let requestEmail = (await this.accessor.get(email, contexts)).trim();
         let requestRut = await this.accessor.get(rut, contexts);
-        let builtPassword = buildPwd(requestEmail, requestRut, requestUsername);
+        let builtPassword = buildPwd(requestEmail, requestRut, requestAfiliacion);
 
-        this.aLogger.trace(`requestUsername "${requestUsername}" `);
+        this.aLogger.trace(`requestAfiliacion "${requestAfiliacion}" `);
         this.aLogger.trace(`requestEmail "${requestEmail}" `);
         this.aLogger.trace(`requestRut "${requestRut}" `);
         this.aLogger.trace(`finalPassword "${builtPassword}" `);
 
+        const username = requestEmail; //Cambiar a requestAfiliacion en caso de Update de creacion de Cognito
+
         try {
             //Se crea cuenta en AWS Cognito
-            const userSub = await this.create(requestUsername, builtPassword, requestEmail);
+            const userSub = await this.create(username, builtPassword);
             this.aLogger.trace(`UserSub: "${userSub}" `);
 
             //Se confirma cuenta y correo
-            const confirmResult = await this.confirm(requestUsername);
+            const confirmResult = await this.confirm(username);
             this.aLogger.trace(`ConfirmResult: "${confirmResult}" `);
             return userSub;
 
@@ -123,7 +125,7 @@ class CreateAccount extends BaseClass {
         }
     }
 
-    async create(username, password, email) {
+    async create(username, password) {
 
         const clientPoolId = AWSConfig.userPoolClient;
 
@@ -131,21 +133,7 @@ class CreateAccount extends BaseClass {
         const input = {
             ClientId: clientPoolId,
             Username: username,
-            Password: password,
-            UserAttributes: [
-                {
-                    Name: 'email',
-                    Value: email
-                },
-                {
-                    Name: 'name',
-                    Value: username
-                },
-                {
-                    Name: 'given_name',
-                    Value: username
-                }
-            ]
+            Password: password
         };
 
         this.aLogger.trace(`Generando request para creacion de user: ${JSON.stringify(input)}`)
@@ -153,6 +141,38 @@ class CreateAccount extends BaseClass {
         const {UserSub} = await this.clientCognito.send(new SignUpCommand(input));
         return UserSub;
     }
+
+    // //TODO: VERSION PARA ACTUALIZACION DE COGNITO
+    // async create(username, password, email) {
+    //
+    //     const clientPoolId = AWSConfig.userPoolClient;
+    //
+    //
+    //     const input = {
+    //         ClientId: clientPoolId,
+    //         Username: username,
+    //         Password: password,
+    //         UserAttributes: [
+    //             {
+    //                 Name: 'email',
+    //                 Value: email
+    //             },
+    //             {
+    //                 Name: 'name',
+    //                 Value: username
+    //             },
+    //             {
+    //                 Name: 'given_name',
+    //                 Value: username
+    //             }
+    //         ]
+    //     };
+    //
+    //     this.aLogger.trace(`Generando request para creacion de user: ${JSON.stringify(input)}`)
+    //
+    //     const {UserSub} = await this.clientCognito.send(new SignUpCommand(input));
+    //     return UserSub;
+    // }
 
     async confirm(username) {
         const confirmInput = {
@@ -509,8 +529,8 @@ class Deserialize extends BaseClass {
     }
 }
 
-function buildPwd(username, rut, afiliacion) {
-    const usernameCap = username.split('@')[0].toLowerCase();
+function buildPwd(email, rut, afiliacion) {
+    const usernameCap = email.split('@')[0].toLowerCase();
     const rutSinDigito = rut.split('-')[0];
 
     let password = `${usernameCap}_${rutSinDigito}_${afiliacion}`;
