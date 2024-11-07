@@ -33,8 +33,8 @@ if(environment === 'CRAFT'){
         accessKeyId: process.env.OB_ACCESSKEY,
         secretAccessKey: process.env.OB_SECRETKEY,
         region: 'us-west-2',
-        userPoolClient: '1m95fl45msc61j0njsldmk8b7c',
-        userPoolId: 'us-west-2_kNazeBAuD',
+        userPoolClient: '3srukjhs8r6gjn40h6u5ghd425',
+        userPoolId: 'us-west-2_J8c7BHK1',
     }
     Contracts_Table = 'contracts_contracts';
     ContractUser_Table = "contracts_users";
