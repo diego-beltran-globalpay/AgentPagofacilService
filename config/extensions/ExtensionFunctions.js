@@ -171,12 +171,14 @@ class GetFinalValue extends BaseClass {
 
         const { param1: value1req } = this.props;
         const { param2: value2req } = this.props;
+        const { param3: value3req } = this.props;
         const { registry: { logPrefix } } = contexts;
 
         let value1 = await this.accessor.get(value1req, contexts);
         let value2 = await this.accessor.get(value2req, contexts);
+        let value3 = await this.accessor.get(value3req, contexts);
 
-        return value1 || value2;
+        return value1 || value2 || value3;
 
     }
 }
