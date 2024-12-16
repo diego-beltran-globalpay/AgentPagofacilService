@@ -8,6 +8,11 @@
             "timeout" : "20",
             "path" : "/pendings",
             "port": "443"
+        },
+        "TipoProducto": {
+            "17": "Cargos Recurrentes",
+            "18": "Pago Fácil Shops",
+            "19": "E-Commerce"
         }
     }
 }

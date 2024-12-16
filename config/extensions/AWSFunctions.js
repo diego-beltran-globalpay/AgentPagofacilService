@@ -34,7 +34,7 @@ if(environment === 'CRAFT'){
         secretAccessKey: process.env.OB_SECRETKEY,
         region: 'us-west-2',
         userPoolClient: '3srukjhs8r6gjn40h6u5ghd425',
-        userPoolId: 'us-west-2_J8c7BHK1',
+        userPoolId: 'us-west-2_J8c7BHK1F',
     }
     Contracts_Table = 'contracts_contracts';
     ContractUser_Table = "contracts_users";
@@ -71,7 +71,7 @@ class BaseClass {
             return newProps
         }, {});
 
-        this.aLogger.trace('Generando conexion con Cognito');
+        this.aLogger.trace('Generando conexion con Cognito'+'(Env: '+environment+')');
         this.aLogger.trace(`region: ${AWSConfig.region}`);
         this.aLogger.trace(`userPoolId: ${AWSConfig.userPoolId}`);
         this.aLogger.trace(`userPoolClient: ${AWSConfig.userPoolClient}`);
@@ -529,8 +529,8 @@ class Deserialize extends BaseClass {
     }
 }
 
-function buildPwd(email, rut, afiliacion) {
-    const usernameCap = email.split('@')[0].toLowerCase();
+function buildPwd(username, rut, afiliacion) {
+    const usernameCap = username.split('@')[0].toLowerCase();
     const rutSinDigito = rut.split('-')[0];
 
     let password = `${usernameCap}_${rutSinDigito}_${afiliacion}`;

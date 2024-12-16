@@ -191,7 +191,7 @@
               ]
             },
 
-            "+tmp.newUserExtra.ciudad"                                : "%Ttmp.ConsultaBDNRes.fiscalCiudad",
+            "+tmp.newUserExtra.ciudad"                                : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCiudad,%Ttmp.ConsultaBDNRes.comercioCiudad)",
             "+tmp.newUserExtra.pais"                                  : "%Ttmp.ConsultaBDNRes.nacionalidadPm",
             "+tmp.newUserExtra.rut"                                   : "%Ttmp.ConsultaBDNRes.rut",
             "+tmp.newUserExtra.telefono"                              : "%Ttmp.ConsultaBDNRes.fiscalTelefono",
@@ -222,10 +222,10 @@
           {
             "+tmp.newUserDF.idUsuario"                        : "%Ttmp.newUser.id",
             "+tmp.newUserDF.isCompany"                        : "0",
-            "+tmp.newUserDF.ciudad"                           : "%Ttmp.ConsultaBDNRes.fiscalCiudad",
-            "+tmp.newUserDF.comuna"                           : "%Ttmp.ConsultaBDNRes.fiscalComuna",
-            "+tmp.newUserDF.direccion"                        : "%Ttmp.ConsultaBDNRes.fiscalCalle",
-            "+tmp.newUserDF.email_dte"                        : "%Ttmp.ConsultaBDNRes.fiscalEmail",
+            "+tmp.newUserDF.ciudad"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCiudad,%Ttmp.ConsultaBDNRes.comercioCiudad)",
+            "+tmp.newUserDF.comuna"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalComuna,%Ttmp.ConsultaBDNRes.comercioComuna)",
+            "+tmp.newUserDF.direccion"                        : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCalle,%Ttmp.ConsultaBDNRes.comercioCalle)",
+            "+tmp.newUserDF.email_dte"                        : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalEmail,%Ttmp.ConsultaBDNRes.comercioEmail)",
             "+tmp.newUserDF.giro"                             : "%Ttmp.ConsultaBDNRes.giroSii",
             "+tmp.newUserDF.nombreRepresentante"              : "@Concat(%Ttmp.ConsultaBDNRes.rlNombre, ,%Ttmp.ConsultaBDNRes.rlPaterno, ,%Ttmp.ConsultaBDNRes.rlMaterno)",
             "+tmp.newUserDF.razonSocial"                      : "%Ttmp.ConsultaBDNRes.razonSocial",
@@ -347,7 +347,7 @@
             "+tmp.CurrentDate"                                 : "@GetMysqlDate(0)",
 
             "+tmp.newService.owner"                            : "%Ttmp.newUser.id",
-            "+tmp.newService.tipo"                             : "SIN ECOMMERCE",
+            "+tmp.newService.tipo"                             : "@Get(TipoProducto,%Ttmp.ConsultaBDNRes.tpProdServ,false,tables1)",
             "+tmp.newService.nombreComercio"                   : "%Ttmp.ConsultaBDNRes.nombreFantasia",
             "+tmp.newService.url_servicio"                     : "%Ttmp.ConsultaBDNRes.urlSitio",
             "+Cond.TieneUrlServicio": {

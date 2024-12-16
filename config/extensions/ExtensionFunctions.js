@@ -166,6 +166,21 @@ class isValidUpdate extends BaseClass {
     }
 }
 
+class GetFinalValue extends BaseClass {
+    async apply(contexts) {
+
+        const { param1: value1req } = this.props;
+        const { param2: value2req } = this.props;
+        const { registry: { logPrefix } } = contexts;
+
+        let value1 = await this.accessor.get(value1req, contexts);
+        let value2 = await this.accessor.get(value2req, contexts);
+
+        return value1 || value2;
+
+    }
+}
+
 function filterId(logPrefix){
     return logPrefix.replace('MsgsHandler','').replace('[','').replace(']','').trim();
 }
@@ -176,3 +191,4 @@ exports.GetMysqlDate = GetMysqlDate;
 exports.AgentLogger = AgentLogger;
 exports.isValidUpdate = isValidUpdate;
 exports.GenerateServiceToken = GenerateServiceToken;
+exports.GetFinalValue = GetFinalValue;
