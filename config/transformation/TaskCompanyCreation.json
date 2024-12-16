@@ -220,8 +220,16 @@
         "Match": [],
         "Rule": [
           {
+
+            "+Cond.isCompany": {
+              "Match": [
+                {"%Ttmp.ConsultaBDNRes.tpContribuyente": "^JURIDICA$"},
+                {"%Ttmp.ConsultaBDNRes.tpContribuyente": "^(?!JURIDICA$).*$"}
+              ],
+              "Rule": [{"+tmp.newUserDF.isCompany": "1"},{"+tmp.newUserDF.isCompany": "0"}]
+            },
+
             "+tmp.newUserDF.idUsuario"                        : "%Ttmp.newUser.id",
-            "+tmp.newUserDF.isCompany"                        : "0",
             "+tmp.newUserDF.ciudad"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCiudad,%Ttmp.ConsultaBDNRes.comercioCiudad)",
             "+tmp.newUserDF.comuna"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalComuna,%Ttmp.ConsultaBDNRes.comercioComuna)",
             "+tmp.newUserDF.direccion"                        : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCalle,%Ttmp.ConsultaBDNRes.comercioCalle)",
