@@ -233,6 +233,7 @@
             "+tmp.newUserDF.ciudad"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCiudad,%Ttmp.ConsultaBDNRes.comercioCiudad)",
             "+tmp.newUserDF.comuna"                           : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalComuna,%Ttmp.ConsultaBDNRes.comercioComuna)",
             "+tmp.newUserDF.direccion"                        : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalCalle,%Ttmp.ConsultaBDNRes.fiscalCallec,%Ttmp.ConsultaBDNRes.comercioCalle)",
+            "+tmp.newUserDF.telefono"                         : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalTelefono,%Ttmp.ConsultaBDNRes.fiscalTelefono2)",
             "+tmp.newUserDF.email_dte"                        : "@GetFinalValue(%Ttmp.ConsultaBDNRes.fiscalEmail,%Ttmp.ConsultaBDNRes.comercioEmail)",
             "+tmp.newUserDF.giro"                             : "%Ttmp.ConsultaBDNRes.giroSii",
             "+tmp.newUserDF.nombreRepresentante"              : "@Concat(%Ttmp.ConsultaBDNRes.rlNombre, ,%Ttmp.ConsultaBDNRes.rlPaterno, ,%Ttmp.ConsultaBDNRes.rlMaterno)",
