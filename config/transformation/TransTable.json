@@ -10,9 +10,9 @@
             "port": "443"
         },
         "TipoProducto": {
-            "17": "Cargos Recurrentes",
-            "18": "Pago Fácil Shops",
-            "19": "E-Commerce"
+            "17": "CARGOS RECURRENTES",
+            "18": "PAGO FACIL SHOPS",
+            "19": "ECOMMERCE"
         }
     }
 }
